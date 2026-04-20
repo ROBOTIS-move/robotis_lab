@@ -61,6 +61,10 @@ x-default-robotis-lab-volumes: &default-robotis-lab-volumes
   - type: bind
     source: ../outputs
     target: ${DOCKER_ROBOTISLAB_PATH}/outputs
+  # frontier_simulation (sibling repo) — provides isaac_sim.assets.elevator etc.
+  - type: bind
+    source: ../../frontier_simulation
+    target: /workspace/frontier_simulation
   # Bash history
   - type: bind
     source: .robotis-lab-docker-history
@@ -73,15 +77,20 @@ x-default-robotis-lab-environment: &default-robotis-lab-environment
   - OMNI_KIT_ALLOW_ROOT=1
   - ACCEPT_EULA=${ACCEPT_EULA}
   - PRIVACY_CONSENT=Y
-  - NVIDIA_VISIBLE_DEVICES=all
+  # Set for GPU server
+  - NVIDIA_VISIBLE_DEVICES=6
   - NVIDIA_DRIVER_CAPABILITIES=all
+  - CUDA_VISIBLE_DEVICES=6
+  # Allow `import isaac_sim.assets.elevator` (bind-mounted frontier_simulation)
+  - PYTHONPATH=/workspace/frontier_simulation/source:${PYTHONPATH}
 
 x-default-robotis-lab-deploy: &default-robotis-lab-deploy
   resources:
     reservations:
       devices:
         - driver: nvidia
-          count: all
+          # Set for GPU server
+          device_ids: ['6']
           capabilities: [ gpu ]
 
 services:
@@ -108,6 +117,8 @@ services:
     volumes: *default-robotis-lab-volumes
     environment: *default-robotis-lab-environment
     deploy: *default-robotis-lab-deploy
+    # Set for GPU server
+    cpuset: "128-150"
 
 volumes:
   isaac-cache-kit:

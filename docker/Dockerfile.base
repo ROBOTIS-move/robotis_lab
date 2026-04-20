@@ -166,6 +166,7 @@ RUN echo "# Environment variables" >> ${DOCKER_USER_HOME}/.bashrc && \
     echo "export LD_LIBRARY_PATH=${CYCLONEDDS_HOME}/lib:\$LD_LIBRARY_PATH" >> ${DOCKER_USER_HOME}/.bashrc && \
     echo "export PATH=${CYCLONEDDS_HOME}/bin:\$PATH" >> ${DOCKER_USER_HOME}/.bashrc && \
     echo "export ROS_DOMAIN_ID=30" >> ${DOCKER_USER_HOME}/.bashrc && \
+    echo "export PYTHONPATH=/workspace/frontier_simulation/source:\$PYTHONPATH" >> ${DOCKER_USER_HOME}/.bashrc && \
     echo "export TZ=$(date +%Z)" >> ${DOCKER_USER_HOME}/.bashrc && \
     echo "export LEROBOT_VENV=${LEROBOT_VENV}" >> ${DOCKER_USER_HOME}/.bashrc && \
     echo "" >> ${DOCKER_USER_HOME}/.bashrc && \
