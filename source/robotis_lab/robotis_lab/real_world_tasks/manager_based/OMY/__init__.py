@@ -23,3 +23,4 @@
 
 import gymnasium as gym
 from .pick_place import *  # noqa
+from . import elevator_call  # noqa: F401
