@@ -118,20 +118,18 @@ class OMYElevatorCallEnvCfg(ElevatorCallEnvCfg):
             ),
         )
 
-        # Contact sensor on arm end + gripper links, filtered to CallBtn_* only.
-        # `link6` is OMY's final arm link (where the gripper attaches).
-        # The filter pattern must accommodate the elevator USD's optional
-        # inner `/Elevator` wrapper (see metadata.resolve_metadata_prim): the
-        # button prim may live at either `Elevator/HallExterior/CallBtn_*` or
-        # `Elevator/Elevator/HallExterior/CallBtn_*` depending on the USD
-        # layout. Provide both patterns.
+        # Contact sensor on arm end + gripper links.
+        # The elevator USD doubles-wraps its root (Elevator/Elevator/...), so
+        # the real button path is <env>/Elevator/Elevator/HallExterior/CallBtn_<idx>.
+        # Isaac Lab requires exactly ONE prim match per env for filter_prim_paths_expr,
+        # so we pin to CallBtn_0 (press_call_button() in our env class also targets
+        # call_index=0, keeping observation and trigger aligned).
         self.scene.contact_gripper = ContactSensorCfg(
             prim_path="{ENV_REGEX_NS}/Robot/OMY/link6",
             update_period=0.0,
             history_length=1,
             filter_prim_paths_expr=[
-                "{ENV_REGEX_NS}/Elevator/HallExterior/CallBtn_.*",
-                "{ENV_REGEX_NS}/Elevator/Elevator/HallExterior/CallBtn_.*",
+                "{ENV_REGEX_NS}/Elevator/Elevator/HallExterior/CallBtn_0",
             ],
         )
 
