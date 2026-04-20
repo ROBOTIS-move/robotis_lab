@@ -29,7 +29,7 @@ def door_open_sustained(
     simulated time when the door first crossed the threshold). ``events.
     reset_door_open_latch`` clears this dict on reset.
     """
-    elevator = env.scene["elevator"]
+    elevator = env.elevator
     if not hasattr(env, "_elev_door_open_since"):
         env._elev_door_open_since = {}
     latch = env._elev_door_open_since

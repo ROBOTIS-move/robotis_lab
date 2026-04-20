@@ -36,7 +36,7 @@ def call_button_contact(
 
 def call_button_lit(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Whether the elevator's first call button is currently lit."""
-    elevator = env.scene["elevator"]
+    elevator = env.elevator
     result = torch.zeros(env.num_envs, device=env.device)
     for eid in range(env.num_envs):
         lit = False
@@ -50,6 +50,6 @@ def call_button_lit(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 def door_open_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Door open progress 0.0 (closed) – 1.0 (open) per env."""
-    elevator = env.scene["elevator"]
+    elevator = env.elevator
     return torch.as_tensor(
         elevator.door.progress, device=env.device, dtype=torch.float32)

@@ -50,7 +50,7 @@ def randomize_robot_spawn_near_call_button(
     if env_ids is None:
         return
 
-    elevator = env.scene["elevator"]
+    elevator = env.elevator
     robot: Articulation = env.scene[robot_cfg.name]
     pedestal: AssetBase = env.scene[pedestal_cfg.name]
     device = env.device

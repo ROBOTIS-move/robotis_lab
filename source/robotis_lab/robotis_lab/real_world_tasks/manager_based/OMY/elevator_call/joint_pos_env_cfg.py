@@ -99,10 +99,10 @@ class OMYElevatorCallEnvCfg(ElevatorCallEnvCfg):
             ),
         )
 
-        # Top camera: placeholder attached to pedestal; final position TBD.
-        # Mounted above the pedestal pointing roughly toward the button row.
+        # Top camera: placeholder under env root (always exists). Final
+        # position TBD — reattach to a meaningful prim later.
         self.scene.cam_top = CameraCfg(
-            prim_path="{ENV_REGEX_NS}/Pedestal/cam_top",
+            prim_path="{ENV_REGEX_NS}/cam_top",
             update_period=0.0,
             height=480,
             width=848,
@@ -112,7 +112,7 @@ class OMYElevatorCallEnvCfg(ElevatorCallEnvCfg):
                 horizontal_aperture=20.955, clipping_range=(0.01, 100.0),
             ),
             offset=CameraCfg.OffsetCfg(
-                pos=(0.0, 0.0, 0.6),
+                pos=(0.0, 0.0, 1.6),                    # env origin 기준 높이
                 rot=(0.0, 0.7071068, 0.7071068, 0.0),   # facing +x, pitched down
                 convention="isaac",
             ),
@@ -120,14 +120,18 @@ class OMYElevatorCallEnvCfg(ElevatorCallEnvCfg):
 
         # Contact sensor on arm end + gripper links, filtered to CallBtn_* only.
         # `link6` is OMY's final arm link (where the gripper attaches).
-        # Actual finger links (rh_*) sit under it; a regex covering both
-        # increases the chance of catching finger-tip contact on the button.
+        # The filter pattern must accommodate the elevator USD's optional
+        # inner `/Elevator` wrapper (see metadata.resolve_metadata_prim): the
+        # button prim may live at either `Elevator/HallExterior/CallBtn_*` or
+        # `Elevator/Elevator/HallExterior/CallBtn_*` depending on the USD
+        # layout. Provide both patterns.
         self.scene.contact_gripper = ContactSensorCfg(
             prim_path="{ENV_REGEX_NS}/Robot/OMY/link6",
             update_period=0.0,
             history_length=1,
             filter_prim_paths_expr=[
                 "{ENV_REGEX_NS}/Elevator/HallExterior/CallBtn_.*",
+                "{ENV_REGEX_NS}/Elevator/Elevator/HallExterior/CallBtn_.*",
             ],
         )
 
