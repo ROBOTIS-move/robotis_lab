@@ -92,10 +92,16 @@ check_x11() {
 }
 
 # Build docker image
+# Pass '--no-cache' as the second argument to force a clean rebuild.
 build_image() {
     echo "[INFO] Building Robotis Lab docker image..."
     cd "${DOCKER_DIR}"
-    docker compose build robotis_lab
+    local extra_args=()
+    if [ "${2:-}" = "--no-cache" ]; then
+        extra_args+=("--no-cache")
+        echo "[INFO] --no-cache flag set; build cache will be ignored."
+    fi
+    docker compose build "${extra_args[@]}" robotis_lab
     echo "[INFO] Build complete!"
 }
 
@@ -212,7 +218,7 @@ load_env
 # pass the arguments
 case "$1" in
     build)
-        build_image
+        build_image "$@"
         ;;
     start)
         start_container

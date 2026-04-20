@@ -98,9 +98,14 @@ RUN touch /bin/nvidia-smi && \
     mkdir -p /var/run/nvidia-persistenced && \
     touch /var/run/nvidia-persistenced/socket
 
-# Install Isaac Lab and all its dependencies
+# Install Isaac Lab and all its dependencies.
+# The --install script sometimes skips the core isaaclab editable install on
+# fresh builds, leaving only isaaclab_assets/_mimic/_rl/_tasks registered.
+# Re-run an explicit editable install for the core package as a safety net.
 RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
-    ${ISAACLAB_PATH}/isaaclab.sh --install
+    ${ISAACLAB_PATH}/isaaclab.sh --install && \
+    ${ISAACLAB_PATH}/_isaac_sim/python.sh -m pip install -e \
+        ${ISAACLAB_PATH}/source/isaaclab --no-build-isolation
 
 # HACK: Remove install of quadprog dependency (from Isaac Lab)
 RUN ${ISAACLAB_PATH}/isaaclab.sh -p -m pip uninstall -y quadprog
