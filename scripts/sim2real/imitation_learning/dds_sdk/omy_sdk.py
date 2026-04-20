@@ -15,10 +15,12 @@
 # Author: Taehyeong Kim
 
 import os
+import sys
+import tty
+import termios
 import threading
 import torch
 import cv2
-from pynput.keyboard import Listener
 from collections.abc import Callable
 from datetime import datetime
 
@@ -29,6 +31,7 @@ from robotis_dds_python.idl.std_msgs.msg import Header_
 from robotis_dds_python.idl.builtin_interfaces.msg import Time_
 
 from robotis_dds_python.tools.topic_manager import TopicManager
+from cyclonedds.core import Listener as DDSListener
 
 
 class OMYSdk:
@@ -55,10 +58,23 @@ class OMYSdk:
         # DDS Topic Manager
         topic_manager = TopicManager(domain_id=self.domain_id)
 
+        sdk_self = self
+
+        class _LeaderListener(DDSListener):
+            def on_data_available(self, reader):
+                for sample in reader.take():
+                    if sample and sample.points:
+                        joint_dict = dict(zip(sample.joint_names, sample.points[-1].positions))
+                        with sdk_self.lock:
+                            sdk_self.joint_trajectory_cmd = [
+                                joint_dict.get(name, 0.0) for name in sdk_self.joint_names
+                            ]
+
         # Subscribers
         self.joint_trajectory_reader = topic_manager.topic_reader(
             topic_name="leader/joint_trajectory",
-            topic_type=JointTrajectory_
+            topic_type=JointTrajectory_,
+            listener=_LeaderListener()
         )
 
         # Publishers
@@ -75,13 +91,9 @@ class OMYSdk:
             topic_type=CompressedImage_
         )
 
-        # Start subscriber thread
-        self.thread = threading.Thread(target=self._subscriber_loop, daemon=True)
-        self.thread.start()
-
-        # Keyboard listener
-        self.listener = Listener(on_press=self._on_press)
-        self.listener.start()
+        # Terminal keyboard listener (headless-compatible, no X server required)
+        self._kbd_thread = threading.Thread(target=self._keyboard_loop, daemon=True)
+        self._kbd_thread.start()
 
         self._keyboard_controls()
 
@@ -98,57 +110,46 @@ class OMYSdk:
             print("[R] Skip failed episode (not saved) and proceed to the next one")
             print("[B] Start/Resume robot control")
 
-    def _on_press(self, key):
+    def _keyboard_loop(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
         try:
-            if self.mode == 'record':
-                if key.char == 'b':
-                    self._started = True
-                    self._reset_state = False
-                elif key.char == 'r':
-                    self._started = False
-                    self._reset_state = True
-                    self._call_callback("R")
-                elif key.char == 'n':
-                    self._started = False
-                    self._reset_state = True
-                    self._call_callback("N")
-            elif self.mode == 'inference':
-                if key.char == 'b':
-                    self._started = True
-                    self._reset_state = False
-                elif key.char == 'r':
-                    self._started = False
-                    self._reset_state = True
-                    self._call_callback("R")
-        except AttributeError:
-            pass
+            tty.setcbreak(fd)
+            while self.running:
+                ch = sys.stdin.read(1)
+                if not ch or ch == '\x03':  # Ctrl+C
+                    self.running = False
+                    os.kill(os.getpid(), 2)  # SIGINT
+                    break
+                self._on_key(ch)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    def _on_key(self, ch):
+        if self.mode == 'record':
+            if ch == 'b':
+                self._started = True
+                self._reset_state = False
+            elif ch == 'r':
+                self._started = False
+                self._reset_state = True
+                self._call_callback("R")
+            elif ch == 'n':
+                self._started = False
+                self._reset_state = True
+                self._call_callback("N")
+        elif self.mode == 'inference':
+            if ch == 'b':
+                self._started = True
+                self._reset_state = False
+            elif ch == 'r':
+                self._started = False
+                self._reset_state = True
+                self._call_callback("R")
 
     def _call_callback(self, key):
         if key in self._additional_callbacks:
             self._additional_callbacks[key]()
-
-    # ----------------------
-    # Subscriber loop
-    # ----------------------
-    def _subscriber_loop(self):
-        """Continuously read joint trajectory commands from the leader."""
-        try:
-            while self.running:
-                for msg in self.joint_trajectory_reader.take_iter():
-                    if msg and msg.points:
-                        joint_dict = dict(zip(msg.joint_names, msg.points[-1].positions))
-                        with self.lock:
-                            self.joint_trajectory_cmd = [
-                                joint_dict.get(name, 0.0) for name in self.joint_names
-                            ]
-        except Exception as e:
-            print("Subscriber thread exception:", e)
-        finally:
-            try:
-                self.joint_trajectory_reader.Close()
-            except:
-                pass
-            print("Subscriber closed")
 
     # ----------------------
     # Publishers
@@ -274,7 +275,6 @@ class OMYSdk:
     def shutdown(self):
         """Stop threads and close DDS publishers/subscribers."""
         self.running = False
-        self.thread.join()
         for obj in [self.joint_trajectory_reader, self.joint_state_writer,
                     self.top_cam_writer, self.wrist_cam_writer]:
             try:
